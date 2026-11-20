@@ -15,7 +15,7 @@ dependencies (`-MMD -MP`).
 ## Usage
 
 ```
-parsolver solve -m <moves> -s <moveset> -l <length> [-p <db>]
+parsolver solve -m <moves> -s <moveset> [-l <length>] [-n <solutions>] [-p <db>]
 parsolver build-db <path>
 ```
 
@@ -24,19 +24,22 @@ parsolver build-db <path>
 Applies a scramble, prints the resulting cube, then runs IDA* and prints the
 solution(s).
 
-| Flag           | Required | Meaning                                                         |
-| -------------- | -------- | --------------------------------------------------------------- |
-| `-m <moves>`   | yes      | Space-separated scramble applied to a solved cube. May be `""`. |
-| `-s <moveset>` | yes      | Allowed move types for the search.                              |
-| `-l <length>`  | yes      | Maximum solution length, `0`–`32`.                              |
-| `-p <db>`      | no       | Corner pattern database file to load.                           |
+| Flag             | Required | Meaning                                                         |
+| ---------------- | -------- | --------------------------------------------------------------- |
+| `-m <moves>`     | yes      | Space-separated scramble applied to a solved cube. May be `""`. |
+| `-s <moveset>`   | yes      | Allowed move types for the search.                              |
+| `-l <length>`    | no       | Maximum solution length, `0`–`32` (default `32`).               |
+| `-n <solutions>` | no       | Stop after this many solutions; `0` or omitted means no limit.  |
+| `-p <db>`        | no       | Corner pattern database file to load.                           |
 
 - With `-p`, the search uses the corner database as its heuristic.
 - Without `-p`, no database is built or written; the heuristic is `0`, so the
   search is an uninformed iterative-deepening DFS bounded by `-l`.
+- Solutions are printed as they are found, shortest bound first; `-n` stops the
+  search as soon as that many have been printed.
 - An unreadable or wrong-sized `-p` file is an error (exit `1`).
-- `-m`, `-s`, and `-l` are mandatory; unknown flags and values outside the
-  allowed ranges exit `1`.
+- `-m` and `-s` are mandatory; unknown flags and values outside the allowed
+  ranges exit `1`.
 
 ### `build-db`
 
@@ -114,6 +117,55 @@ rather than I/O. The two changes contribute roughly equally:
 (93–109 s) is machine interference: run 8 spent ~6 s of elapsed time outside the
 process.
 
+## Search performance
+
+`bench/search.sh` times finding the first solution (`-n 1`) for each of the 21
+PLL setups in `bench/pll/setups.tsv`, once with the corner database and once
+without, and reports both. A setup is the inverse of a standard PLL algorithm: it
+is passed to `-m`, and the move group from `-s` is the set of move types the
+setup uses. Same reference machine and build as above, database pre-built, 20 s
+cap per run - without a cap the no-database search would not terminate, since it
+starts at bound 0 and the solutions are 7–18 moves long.
+
+| Case | Move group | With database (s) | Without database (s) |
+| ---- | ---------- | ----------------: | -------------------: |
+| Aa   | UDRx       |              0.02 |                 5.79 |
+| Ab   | UDRx       |              0.02 |                 4.64 |
+| E    | UDR        |              0.58 |              timeout |
+| F    | UFR        |              0.14 |              timeout |
+| Ga   | UFRu       |              0.03 |              timeout |
+| Gb   | UFRu       |              0.05 |              timeout |
+| Gc   | URuf       |              0.04 |              timeout |
+| Gd   | URuf       |              0.02 |              timeout |
+| H    | UM         |              0.02 |                 0.00 |
+| Ja   | UFL        |              0.02 |                 9.00 |
+| Jb   | UFR        |              0.02 |                 5.23 |
+| Na   | UFR        |              0.05 |              timeout |
+| Nb   | UDFr       |              0.37 |              timeout |
+| Ra   | UDR        |              0.05 |              timeout |
+| Rb   | UDR        |              0.08 |              timeout |
+| T    | UFR        |              0.05 |              timeout |
+| Ua   | UM         |              0.02 |                 0.00 |
+| Ub   | UM         |              0.02 |                 0.00 |
+| V    | URf        |              0.07 |              timeout |
+| Y    | UFR        |              0.02 |              timeout |
+| Z    | UM         |              0.02 |                 0.00 |
+
+| Version          | Solved | Timed out |   Total |  Mean | Median |
+| ---------------- | -----: | --------: | ------: | ----: | -----: |
+| with database    |     21 |         0 |  1.71 s | 0.081 |  0.030 |
+| without database |      8 |        13 | 24.66 s | 3.083 |  2.320 |
+
+- On the 8 cases solved both ways: 0.16 s with the database vs 24.66 s without,
+  a factor of **154×**.
+- The slowest case with the database is `E` at 0.58 s (an 18-move solution);
+  every other case is at most 0.37 s.
+- `H`, `Ua`, `Ub` and `Z` are pure edge permutations, so the corner heuristic is
+  0 and the database cannot help: they solve in 0.00 s either way, and the
+  0.02 s with `-p` is the cost of reading the 44 MB table.
+- Without the database, `E`, `F`, `Ga`–`Gd`, `Na`, `Nb`, `Ra`, `Rb`, `T`, `V` and
+  `Y` do not finish within the 20 s cap.
+
 ## Move notation
 
 Moves are a single move type optionally followed by `2` (half turn) or `'`
@@ -150,9 +202,9 @@ o o o g g g r r r b b b
 ```
 
 The search prints one `depth: N` line per IDA* bound, followed by
-`solution: <moves>` for every solution found at that bound. Solutions use the
-same notation as the input. Any whole-cube rotation of the solved cube is
-considered solved.
+`solution: <moves>` for every solution found at that bound, until `-n` is
+reached. Solutions use the same notation as the input. Any whole-cube rotation
+of the solved cube is considered solved.
 
 ## Examples
 
@@ -181,6 +233,17 @@ Restrict the search to a subset of moves:
 ./build/parsolver solve -m "r U" -s "rU" -l 2
 ```
 
+Stop at the first solution, with no length bound:
+
+```sh
+./build/parsolver solve -p pdb -m "R U R' U'" -s "UDFBRL" -n 1
+```
+
+```
+depth: 4
+solution: U R U' R'
+```
+
 ## Project layout
 
 ```
@@ -191,4 +254,9 @@ src/
   lib/cube.*        cubie cube representation
   lib/turn.*        move parsing and application
   utils/display.*   cubie-to-net rendering
+bench/
+  search.sh         PLL search benchmark driver
+  search.tsv        its raw results
+  pll/setups.tsv    PLL setups with their move groups
+  pll/pll-setups.txt  the same setups, one per line
 ```

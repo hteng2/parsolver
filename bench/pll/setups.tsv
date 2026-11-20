@@ -1,0 +1,39 @@
+# PLL setups for bench/search.sh: name<TAB>setup<TAB>move group
+#
+# Generated from pll-setups.txt. Each line is the setup for a PLL case: applying
+# it to a solved cube leaves that case, and the search is asked to undo it. The
+# setups are the inverse of the corresponding PLL algorithms, produced by feeding
+# each algorithm to the solver (-n 1) and taking its first solution.
+#
+# The move group is the set of move types the setup uses: wide turns get their
+# own entry (r and R are different moves) and so do rotations. Rotations are
+# never required to solve - a whole-cube rotation of the solved cube counts as
+# solved, so it never has to be undone - but they are allowed whenever the setup
+# itself uses them.
+#
+# Every row was checked to permute only U-layer pieces, with no corner twist, no
+# edge flip and no moved centers (up to a whole-cube rotation).
+#
+# U-layer corners: 0 UFR, 1 URB, 2 UBL, 3 ULF
+# U-layer edges:   0 UF,  1 UR,  2 UB,  3 UL
+Aa	x R2 D2 R U R' D2 R U' R	UDRx
+Ab	x R' U R' D2 R U' R' D2 R2	UDRx
+E	R U R D R' U R D' R' U' R D R' U' R D' R2	UDR
+F	R2 F R F' R' U' F' U F R2 U R' U' R U	UFR
+Ga	F' U' F R2 u R' U R U' R u' R2	UFRu
+Gb	R2 u R' U R' U' R u' R2 F' U F	UFRu
+Gc	f R f' R2 u' R U' R' U R' u R2	URuf
+Gd	R2 u' R U' R U R' u R2 f R' f'	URuf
+H	M2 U M2 U2 M2 U M2	UM
+Ja	L' U2 F' U L U' L' U' F U' L	UFL
+Jb	R U F' R' F U F' R F U2 R'	UFR
+Na	F2 R2 U2 R2 U' R2 F2 U2 F2 U' R2 U2 F2 U	UFR
+Nb	r2 F2 D2 F2 D F2 r2 U2 r2 D F2 D2 r2 U	UDFr
+Ra	R U2 R D R' U R D' R' U' R' U R U R'	UDR
+Rb	R' U R U R' U' R' D' R U R' D R U2 R	UDR
+T	R U R' U' R' F R2 U' R' U' R U R' F'	UFR
+Ua	M2 U' M U2 M' U' M2	UM
+Ub	M2 U M U2 M' U M2	UM
+V	R' f' R f2 U f R' f R' f U R U' R	URf
+Y	R2 U' R2 U' R2 U F U F' R2 F U' F'	UFR
+Z	M2 U' M U2 M2 U2 M U M2	UM

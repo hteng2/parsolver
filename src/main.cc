@@ -14,8 +14,8 @@
 
 static void usage() {
   std::cerr << "usage:\n"
-            << "  parsolver solve -m <moves> -s <moveset> -l <length> "
-               "[-p <db>]\n"
+            << "  parsolver solve -m <moves> -s <moveset> [-l <length>] "
+               "[-n <solutions>] [-p <db>]\n"
             << "  parsolver build-db <path>\n";
 }
 
@@ -23,10 +23,12 @@ static int runSolve(int argc, char **argv) {
   std::string moves;
   std::string moveset;
   std::string length;
+  std::string solutionCount;
   std::string dbPath;
   bool haveMoves = false;
   bool haveMoveset = false;
   bool haveLength = false;
+  bool haveSolutions = false;
   bool haveDbPath = false;
 
   for (int i = 2; i < argc; i++) {
@@ -52,6 +54,13 @@ static int runSolve(int argc, char **argv) {
       }
       length = argv[++i];
       haveLength = true;
+    } else if (arg == "-n") {
+      if (i + 1 >= argc) {
+        std::cerr << "error: -n requires a solution count\n";
+        return 1;
+      }
+      solutionCount = argv[++i];
+      haveSolutions = true;
     } else if (arg == "-p") {
       if (i + 1 >= argc) {
         std::cerr << "error: -p requires a database file path\n";
@@ -65,19 +74,32 @@ static int runSolve(int argc, char **argv) {
     }
   }
 
-  if (!haveMoves || !haveMoveset || !haveLength) {
-    std::cerr << "error: -m, -s and -l are required\n";
+  if (!haveMoves || !haveMoveset) {
+    std::cerr << "error: -m and -s are required\n";
     return 1;
   }
 
-  int maxLength = 0;
-  const char *begin = length.data();
-  const char *end = begin + length.size();
-  std::from_chars_result parsed = std::from_chars(begin, end, maxLength);
-  if (parsed.ec != std::errc() || parsed.ptr != end || maxLength < 0 ||
-      maxLength > 32) {
-    std::cerr << "error: -l must be an integer between 0 and 32\n";
-    return 1;
+  int maxLength = 32;
+  if (haveLength) {
+    const char *begin = length.data();
+    const char *end = begin + length.size();
+    std::from_chars_result parsed = std::from_chars(begin, end, maxLength);
+    if (parsed.ec != std::errc() || parsed.ptr != end || maxLength < 0 ||
+        maxLength > 32) {
+      std::cerr << "error: -l must be an integer between 0 and 32\n";
+      return 1;
+    }
+  }
+
+  uint64_t maxSolutions = 0;
+  if (haveSolutions) {
+    const char *begin = solutionCount.data();
+    const char *end = begin + solutionCount.size();
+    std::from_chars_result parsed = std::from_chars(begin, end, maxSolutions);
+    if (parsed.ec != std::errc() || parsed.ptr != end) {
+      std::cerr << "error: -n must be a non-negative integer\n";
+      return 1;
+    }
   }
 
   Moveset moveSet = movesetFromString(moveset);
@@ -105,7 +127,8 @@ static int runSolve(int argc, char **argv) {
 
   printCube(std::cout, cube);
 
-  solve(cube, static_cast<uint8_t>(maxLength), moveSet, db ? &*db : nullptr);
+  solve(cube, static_cast<uint8_t>(maxLength), moveSet, db ? &*db : nullptr,
+        maxSolutions);
 
   return 0;
 }

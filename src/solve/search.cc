@@ -175,19 +175,25 @@ static bool incompatible(TurnType prev, TurnType next) {
   return b.layers > a.layers;
 }
 
-static void search(Cube &cube, const CornerDb *db, const Moveset &moveset,
+static bool search(Cube &cube, const CornerDb *db, const Moveset &moveset,
                    uint32_t threshold, uint32_t g, std::optional<TurnType> last,
-                   std::vector<Turn> &path) {
+                   std::vector<Turn> &path, uint64_t &found,
+                   uint64_t maxSolutions) {
   if (isSolved(cube) && g == threshold) {
     std::cout << "solution:";
     for (const Turn &turn : path) {
       std::cout << ' ' << turnToString(turn);
     }
     std::cout << '\n';
+
+    found++;
+    if (maxSolutions != 0 && found >= maxSolutions) {
+      return true;
+    }
   }
 
   if (g == threshold) {
-    return;
+    return false;
   }
 
   for (TurnType tt : moveset.types) {
@@ -206,21 +212,32 @@ static void search(Cube &cube, const CornerDb *db, const Moveset &moveset,
       }
 
       path.push_back(move);
-      search(next, db, moveset, threshold, g + 1, tt, path);
+      bool stop = search(next, db, moveset, threshold, g + 1, tt, path, found,
+                         maxSolutions);
       path.pop_back();
+      if (stop) {
+        return true;
+      }
     }
   }
+
+  return false;
 }
 
-void solve(Cube &c, uint8_t length, Moveset moveset, const CornerDb *db) {
+void solve(Cube &c, uint8_t length, Moveset moveset, const CornerDb *db,
+           uint64_t maxSolutions) {
   uint32_t start = db ? cornerHeuristic(c, *db) : 0;
   if (start > length) {
     return;
   }
 
   std::vector<Turn> path;
+  uint64_t found = 0;
   for (uint32_t threshold = start; threshold <= length; threshold++) {
     std::cout << "depth: " << threshold << '\n';
-    search(c, db, moveset, threshold, 0, std::nullopt, path);
+    if (search(c, db, moveset, threshold, 0, std::nullopt, path, found,
+               maxSolutions)) {
+      return;
+    }
   }
 }
