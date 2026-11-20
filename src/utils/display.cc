@@ -8,7 +8,7 @@ static uint8_t nibbleGet(const uint8_t *array, int i) {
   return (array[i >> 1] >> ((i & 1) * 4)) & 0xF;
 }
 
-static char colorChar(Color c) {
+static char charFromColor(Color c) {
   switch (c) {
   case Color::White:
     return 'w';
@@ -27,10 +27,9 @@ static char colorChar(Color c) {
   case Color::None:
     return '?';
   }
-  return '?';
 }
 
-static const char *ansiColor(Color c) {
+static const char *ansiFromColor(Color c) {
   switch (c) {
   case Color::White:
     return "\x1b[97m";
@@ -49,7 +48,6 @@ static const char *ansiColor(Color c) {
   case Color::None:
     return "\x1b[0m";
   }
-  return "\x1b[0m";
 }
 
 // Facelets of each corner position, in the same slot order used by the corner
@@ -160,7 +158,7 @@ static void printFaceRow(std::ostream &os, const Color *facets, int base,
                          int row) {
   for (int col = 0; col < 3; col++) {
     Color c = facets[base + row * 3 + col];
-    os << ansiColor(c) << colorChar(c) << "\x1b[0m ";
+    os << ansiFromColor(c) << charFromColor(c) << "\x1b[0m ";
   }
 }
 
